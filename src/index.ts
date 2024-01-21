@@ -1,151 +1,69 @@
-import { QLabel, QMainWindow, FlexLayout, QWidget, QColor } from '@nodegui/nodegui';
-import osu from 'node-os-utils';
-import os from 'os';
+import { exec } from 'child_process';
+import express from 'express';
+import chalk from 'chalk';
+import path from 'path';
+import fs from 'fs';
 
+export interface IRoute { type: (`get` | `post`); path: string; next: IRouteNextFunction; }
+export interface IRouteNextFunction { (req: express.Request, res: express.Response): unknown; }
 
-/* window */
-const win = new QMainWindow();
+export default class Keyskin {
+    public port: number = 8080;
+    private routes: Array<IRoute> = [];
+    private app: express.Application = express();
+    
+    public constructor() {
+        this.init();
+    }
 
-win.setInlineStyle(`background: white;`);
-win.setStyleSheet(`font-family: 'Pretendard'; font-weight: 400;`);
-win.setWindowTitle(`Keyskin`);
-win.setFixedSize(925, 750);
+    private async init() {
+        console.log(chalk.yellow(`Problems may occur while using exec of child_process.`));
+    }
 
+    private async webpackQode() {
+        await new Promise((res, rej) => 
+            exec(`npx qode ${path.resolve(`${__dirname}/lib/gui.js`)}`, (error, _, stderr) => {
+                if (error) rej(error);
+                else res(true);
+            })
+        );
+    }
+    
+    public use(next: IRouteNextFunction) {
+        this.app.use(next);
+    }
+    
+    public on(method: (`get` | `post`), path: string, next: IRouteNextFunction) {
+        this.routes = [...this.routes, { type: method, path, next }];
+    }
+    
+    public async listen(port: number = 8080, next: { (): unknown }) {
+        this.port = port;
+        
+        const now = new Date();
+        const year = now.getFullYear(), month = now.getMonth(), date = now.getDate(), hour = now.getHours(), minute = now.getMinutes(), second = now.getSeconds();
+        const logName = `${year}-${month}-${date}-${hour}-${minute}-${second}.log`;
+        if (!fs.existsSync(`./log`) || (fs.existsSync(`./log`) && !fs.statSync(`./log`).isDirectory())) fs.mkdirSync(`./log`);
+        const config = { latest: logName };
+        fs.writeFileSync(`./log/config.json`, JSON.stringify(config, null, 4));
+        fs.writeFileSync(`./log/${logName}`, ``);
 
-/* title description */
-const widget1 = new QWidget();
-widget1.setInlineStyle(`padding: 25px;`);
+        this.app.use((req, res, next) => {
+            const now = new Date();
+            const hour = now.getHours(), minute = now.getMinutes(), second = now.getSeconds();
+            let log = fs.existsSync(`./log/${logName}`) ? fs.readFileSync(path.resolve(`./log/${logName}`), `utf-8`) : ``;
+            log += `\n[${hour}:${minute}:${second}] ${req.method} ${req.path} :: ${req.ip}`;
+            fs.writeFileSync(path.resolve(`./log/${logName}`), log, `utf-8`);
+            next();
+        });
 
-const layout1 = new FlexLayout(widget1);
+        this.routes.forEach(route => this.app[route.type](route.path, (req, res) => route.next(req, res)));
+        this.app.listen(this.port, next);
 
-const title1 = new QLabel();
-title1.setText(`Monitoring`);
-title1.setInlineStyle(`color: #000000; font-size: 18px; font-weight: 600;`);
-layout1.addWidget(title1);
+        await this.latest();
+    }
 
-const description1 = new QLabel();
-description1.setText(`Easy and fast express monitoring.`);
-description1.setInlineStyle(`color: #000000; font-size: 16px;`);
-layout1.addWidget(description1);
-
-win.setMenuWidget(widget1);
-
-
-/* info */
-const widget2 = new QWidget();
-
-const widget3 = new QWidget(widget2);
-widget3.move(25, 0);
-widget3.setFixedSize(200, 200);
-widget3.setInlineStyle(`border: 1px solid black; background: rgba(63, 114, 175, 0.1); padding: 25px;`);
-
-const widget3_detail = new QWidget(widget3);
-widget3_detail.setFixedSize(200, 200);
-widget3_detail.setInlineStyle(`background: white; padding: 25px; border: 1px solid black;`);
-
-const widget3_detail_layout = new FlexLayout(widget3);
-
-const widget3_detail_usage = new QLabel();
-widget3_detail_usage.setInlineStyle(`color: black; font-size: 18px;`);
-widget3_detail_usage.setText(`Usage: 000.0%`);
-widget3_detail_layout.addWidget(widget3_detail_usage);
-
-const widget3_detail_free = new QLabel();
-widget3_detail_free.setInlineStyle(`color: black; font-size: 18px;`);
-widget3_detail_free.setText(`Free: 000.0%`);
-widget3_detail_layout.addWidget(widget3_detail_free);
-
-const widget3_title = new QLabel();
-widget3_title.setInlineStyle(`font-size: 12px; color: black; margin-top: 5px;`);
-widget3_title.setText(`[ CPU ]`);
-widget3_detail_layout.addWidget(widget3_title);
-
-
-const widget4 = new QWidget(widget2);
-widget4.move(250, 0);
-widget4.setFixedSize(200, 200);
-widget4.setInlineStyle(`border: 1px solid black; background: rgba(63, 114, 175, 0.1); padding: 25px;`);
-
-const widget4_detail = new QWidget(widget4);
-widget4_detail.setFixedSize(200, 200);
-widget4_detail.setInlineStyle(`background: white; padding: 25px; border: 1px solid black;`);
-
-const widget4_detail_layout = new FlexLayout(widget4);
-
-const widget4_detail_used = new QLabel();
-widget4_detail_used.setInlineStyle(`color: black; font-size: 18px;`);
-widget4_detail_used.setText(`Used: 00000000`);
-widget4_detail_layout.addWidget(widget4_detail_used);
-
-const widget4_detail_free = new QLabel();
-widget4_detail_free.setInlineStyle(`color: black; font-size: 18px;`);
-widget4_detail_free.setText(`Free: 00000000`);
-widget4_detail_layout.addWidget(widget4_detail_free);
-
-const widget4_title = new QLabel();
-widget4_title.setInlineStyle(`font-size: 12px; color: black; margin-top: 5px;`);
-widget4_title.setText(`[ MEMORY ]`);
-widget4_detail_layout.addWidget(widget4_title);
-
-
-const widget5 = new QWidget(widget2);
-widget5.move(475, 0);
-widget5.setFixedSize(425, 200);
-widget5.setInlineStyle(`border: 1px solid black;`);
-
-const widget5_detail = new QWidget(widget5);
-widget5_detail.setFixedSize(425, 200);
-widget5_detail.setInlineStyle(`background: white; padding: 25px; border: 1px solid black;`);
-
-const widget5_detail_layout = new FlexLayout(widget5_detail);
-
-const widget5_detail_platform = new QLabel();
-widget5_detail_platform.setInlineStyle(`color: black; font-size: 18px;`);
-widget5_detail_platform.setText(`testtesttesttesttesttesttesttesttest`);
-widget5_detail_layout.addWidget(widget5_detail_platform);
-
-const widget5_detail_hostname = new QLabel();
-widget5_detail_hostname.setInlineStyle(`color: black; font-size: 18px;`);
-widget5_detail_hostname.setText(`testtesttesttesttesttesttesttesttest`);
-widget5_detail_layout.addWidget(widget5_detail_hostname);
-
-
-const widget6 = new QWidget(widget2);
-widget6.move(25, 225);
-widget6.setFixedSize(875, 400);
-widget6.setInlineStyle(`border: 1px solid black; background: white;`);
-
-
-setInterval(async () => {
-    const cpuUsage = await osu.cpu.usage();
-    const cpuFree = await osu.cpu.free();
-
-    widget3_detail_usage.setText(`Usage: ${cpuUsage}%`);
-    widget3_detail_free.setText(`Free: ${cpuFree}%`);
-
-    widget3_detail.setFixedSize(200, cpuFree * 2);
-
-
-    const memUsed = await osu.mem.used();
-    const memFree = await osu.mem.free();
-
-    widget4_detail_used.setText(`Used: ${memUsed.usedMemMb}`);
-    widget4_detail_free.setText(`Free: ${memFree.freeMemMb}`);
-
-    const memCalc = (memFree.freeMemMb / memFree.totalMemMb) * 100;
-
-    widget4_detail.setFixedSize(200, memCalc * 2);
-
-
-    widget5_detail_platform.setText(`Platform: ${os.platform()}`);
-    widget5_detail_hostname.setText(`Hostname: ${os.hostname()}`);
-}, 500);
-
-
-win.setCentralWidget(widget2);
-
-
-/* latest */
-win.show();
-
-(global as any).win = win;
+    private async latest() {
+        await this.webpackQode();
+    }
+}
