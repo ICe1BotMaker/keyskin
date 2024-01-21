@@ -3,9 +3,9 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
 module.exports = {
     mode: process.NODE_ENV || "development",
-    entry: "./src",
+    entry: "./dist",
     target: "node",
-    output: { path: path.resolve(__dirname, "dist"), filename: "index.js" },
+    output: { path: path.resolve(__dirname, "./dist/lib"), filename: "gui.js" },
     module: {
         rules: [
             { test: /\.tsx?$/, use: "ts-loader", exclude: /node_modules/ },
