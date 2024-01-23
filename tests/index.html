@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        color: #556677;
+    }
+
+    .container {
+        overflow: hidden;
+        max-width: 480px;
+        height: 100vh;
+        margin: 0 auto;
+        background: #9bbbd4;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding-top: 50px;
+    }
+
+    .container #log {
+        height: calc(100vh - 200px);
+        margin-top: 50px;
+        padding: 0 50px;
+        overflow-y: scroll;
+    }
+    
+    .container #log::-webkit-scrollbar {
+        display: none;
+    }
+
+    .container #log .message.me {
+        flex-direction: column;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .container #log .message.other {
+        flex-direction: column;
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .container #log .message-text {
+        margin-bottom: 25px;
+        width: 200px;
+        padding: 10px 15px;
+        background: #F7E600;
+        border-radius: 10px;
+        margin-top: 5px;
+    }
+
+    .container #log .message.other .message-text {
+        background: white;
+    }
+
+    .container input {
+        width: 100%;
+        padding: 15px 20px;
+        font-size: 16px;
+        border: 0;
+        outline: none;
+        background: white;
+    }
+
+    .container #time {
+        width: 275px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: center;
+        border-radius: 10px;
+        padding: 5px 15px;
+        background: rgba(0, 0, 0, 0.25);
+        color: white;
+    }
+
+    #submit {
+        padding: 25px;
+        background: #F7E600;
+        border: 0;
+        outline: none;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <div>
+            <div id="time"></div>
+            <div id="log"></div>
+        </div>
+
+        <div style="display: flex; width: 100%;">
+            <input style="flex: 3;" id="message" type="text" placeholder="메시지 보내기">
+            <button id="submit">전송</button>
+            <input style="flex: 1;" id="sender" type="text" placeholder="이름">
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById("log");
+        const message = document.getElementById("message");
+        const sender = document.getElementById("sender");
+        const time = document.getElementById("time");
+        const submit = document.getElementById("submit");
+
+        const set = data => {
+            const tm = data.split(`<br>`)[0].trim();
+            time.innerHTML = tm;
+            
+            log.innerHTML = ``;
+            
+            data.split(`<br>`).forEach((msg, idx) => {
+                if (idx === 0) return;
+                const sndr = msg.split(`]`)[1].split(`[`)[1].split(`]`)[0];
+                const msgd = msg.split(`]`)[2].trim();
+
+                log.innerHTML += `<div class="message ${sndr === sender.value ? `me` : `other`}">${sndr}<div class="message-text">${msgd}</div></div>`;
+            });
+
+            log.scrollTo(0, log.scrollHeight);
+        }
+
+        message.onkeydown = e => {
+            if (e.key === "Enter") {
+                fetch("http://10.114.52.82:8080/message/send?msg=" + message.value + "&sender=" + sender.value).then(data => data.json()).then(data => {
+                    set(data.log);
+                    message.value = '';
+                });
+            }
+        }
+
+        submit.onclick = e => {
+            fetch("http://10.114.52.82:8080/message/send?msg=" + message.value + "&sender=" + sender.value).then(data => data.json()).then(data => {
+                set(data.log);
+                message.value = '';
+                message.focus();
+            });
+        }
+
+        setInterval(() => {
+            fetch("http://10.114.52.82:8080/message/log").then(data => data.json()).then(data => {
+                set(data.log);
+            });
+        }, 500);
+    </script>
+</body>
+</html>
