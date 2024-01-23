@@ -163,7 +163,7 @@ setInterval(async () => {
 
         widget6_text.setText(`${logtext === undefined ? `` : logtext }`);
     });
-}, 500);
+}, 25);
 
 
 win.setCentralWidget(widget2);
